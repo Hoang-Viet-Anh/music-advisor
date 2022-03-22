@@ -1,0 +1,39 @@
+apply plugin: 'java'
+apply plugin: 'application'
+
+group 'advisor'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.google.code.gson:gson:+'
+}
+
+jar {
+    	manifest {
+    		attributes "Main-Class": "advisor.Main"
+    	}
+    	duplicatesStrategy "exclude"
+    	from { 
+    		configurations.runtimeClasspath.collect { 
+    			it.isDirectory() ? it : zipTree(it) 
+    		}
+    	} 
+    }
+    
+    task fatJar(type: Jar) {
+    	manifest {
+    		attributes "Main-Class": "advisor.Main"
+    	}
+    	archiveClassifier = "all"
+    	duplicatesStrategy "exclude"
+    	from { 
+    		configurations.runtimeClasspath.collect { 
+    			it.isDirectory() ? it : zipTree(it) 
+    		}
+    	}
+    	with jar
+    }
