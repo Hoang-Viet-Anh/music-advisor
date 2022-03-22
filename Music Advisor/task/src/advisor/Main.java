@@ -9,6 +9,7 @@ public class Main {
         String choice;
         String category = "";
 
+        //Main loop
         while (true) {
             choice = scanner.nextLine();
             if (choice.contains("playlists")) {
@@ -18,18 +19,27 @@ public class Main {
 
             switch (choice) {
                 case "new":
+                    //Print new releases
                     advisor.printNew();
                     break;
                 case "featured":
+                    //Print featured music
                     advisor.printFeatured();
                     break;
                 case "categories":
+                    //Print categories
                     advisor.printCategories();
                     break;
                 case "playlists":
+                    //Print music by category
                     advisor.printPlaylists(category);
                     break;
+                case "auth":
+                    //Authenticate by spotify
+                    advisor.printAuth();
+                    break;
                 case "exit":
+                    //Exit program
                     advisor.printExit();
                     System.exit(0);
                 default:

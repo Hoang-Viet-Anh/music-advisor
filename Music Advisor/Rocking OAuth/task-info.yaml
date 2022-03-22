@@ -125,6 +125,29 @@ files:
         }
     }
   learner_created: false
-feedback_link: https://hyperskill.org/projects/62/stages/336/implement#comment
-status: Unchecked
+- name: src/advisor/Advisor.java
+  visible: true
+  text: "package advisor;\n\nimport java.util.Locale;\n\npublic class Advisor {\n\n\
+    \    public void printNew() {\n        System.out.println(\"---NEW RELEASES---\\\
+    n\" +\n                \"Mountains [Sia, Diplo, Labrinth]\\n\" +\n           \
+    \     \"Runaway [Lil Peep]\\n\" +\n                \"The Greatest Show [Panic!\
+    \ At The Disco]\\n\" +\n                \"All Out Life [Slipknot]\");\n    }\n\
+    \    public void printFeatured() {\n        System.out.println(\"---FEATURED---\\\
+    n\" +\n                \"Mellow Morning\\n\" +\n                \"Wake Up and\
+    \ Smell the Coffee\\n\" +\n                \"Monday Motivation\\n\" +\n      \
+    \          \"Songs to Sing in the Shower\");\n    }\n    public void printCategories()\
+    \ {\n        System.out.println(\"---CATEGORIES---\\n\" +\n                \"\
+    Top Lists\\n\" +\n                \"Pop\\n\" +\n                \"Mood\\n\" +\n\
+    \                \"Latin\");\n    }\n    public void printPlaylists(String category)\
+    \ {\n        System.out.printf(\"---%s PLAYLISTS---\\n\" +\n                \"\
+    Walk Like A Badass  \\n\" +\n                \"Rage Beats  \\n\" +\n         \
+    \       \"Arab Mood Booster  \\n\" +\n                \"Sunday Stroll\\n\", category.toUpperCase(Locale.ROOT));\n\
+    \    }\n    public void printExit() {\n        System.out.println(\"---GOODBYE!---\"\
+    );\n    }\n    \n}\n"
+  learner_created: true
+feedback_link: https://hyperskill.org/learn/step/5478#comment
+status: Solved
+feedback:
+  message: Congratulations!
+  time: Tue, 22 Mar 2022 14:04:09 UTC
 record: -1
