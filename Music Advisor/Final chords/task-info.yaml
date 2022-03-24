@@ -740,7 +740,9 @@ files:
             }
 
             userProgram.execute("exit");
-            userProgram.stop();
+            if (!userProgram.isFinished()) {
+                userProgram.stop();
+            }
 
             return CheckResult.correct();
         }
@@ -799,7 +801,9 @@ files:
             }
 
             userProgram.execute("exit");
-            userProgram.stop();
+            if (!userProgram.isFinished()) {
+                userProgram.stop();
+            }
 
             return CheckResult.correct();
         }

@@ -1,5 +1,6 @@
 package advisor;
 
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Main {
@@ -8,7 +9,9 @@ public class Main {
         Advisor advisor = new Advisor();
         String choice;
         String category = "";
-
+        int index = Arrays.asList(args).indexOf("-access");
+        String uri = index == -1 ? "https://accounts.spotify.com"
+                : args[index + 1];
         //Main loop
         while (true) {
             choice = scanner.nextLine();
@@ -36,7 +39,7 @@ public class Main {
                     break;
                 case "auth":
                     //Authenticate by spotify
-                    advisor.printAuth();
+                    advisor.printAuth(uri);
                     break;
                 case "exit":
                     //Exit program
