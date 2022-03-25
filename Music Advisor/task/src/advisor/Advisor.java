@@ -1,73 +1,51 @@
 package advisor;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.Base64;
-import java.util.Locale;
+import java.util.*;
 
 public class Advisor {
 
     private boolean access = false;
-    private String redirect_uri = "http://localhost:8080";
-    private AuthServer server;
+    private final String redirectUri = "http://localhost:8080";
+    private Client client = new Client();
 
-    public void printNew() {
+    public void printNew(String apiPath) {
         if (access) {
-            System.out.println("---NEW RELEASES---\n" +
-                    "Mountains [Sia, Diplo, Labrinth]\n" +
-                    "Runaway [Lil Peep]\n" +
-                    "The Greatest Show [Panic! At The Disco]\n" +
-                    "All Out Life [Slipknot]");
+            client.getNewReleases(apiPath);
         } else {
             System.out.println("Please, provide access for application.");
         }
     }
-    public void printFeatured() {
+    public void printFeatured(String apiPath) {
         if (access) {
-            System.out.println("---FEATURED---\n" +
-                    "Mellow Morning\n" +
-                    "Wake Up and Smell the Coffee\n" +
-                    "Monday Motivation\n" +
-                    "Songs to Sing in the Shower");
+            client.getFeatured(apiPath);
         } else {
             System.out.println("Please, provide access for application.");
         }
     }
-    public void printCategories() {
+    public void printCategories(String apiPath) {
         if (access) {
-            System.out.println("---CATEGORIES---\n" +
-                    "Top Lists\n" +
-                    "Pop\n" +
-                    "Mood\n" +
-                    "Latin");
+            client.getCategories(apiPath);
         } else {
             System.out.println("Please, provide access for application.");
         }
     }
-    public void printPlaylists(String category) {
+    public void printPlaylists(String apiPath, String category) {
         if (access) {
-            System.out.printf("---%s PLAYLISTS---\n" +
-                    "Walk Like A Badass  \n" +
-                    "Rage Beats  \n" +
-                    "Arab Mood Booster  \n" +
-                    "Sunday Stroll\n", category.toUpperCase(Locale.ROOT));
+            client.getPlaylists(apiPath, category);
         } else {
             System.out.println("Please, provide access for application.");
         }
     }
     public void printExit() {
-        System.out.println("---GOODBYE!---");
+        System.exit(0);
     }
     public void printAuth(String uri) {
         int timeout = 30;
         String authCode = null;
         System.out.println("use this link to request the access code:");
-        System.out.println(String.format("%s/authorize?client_id=7dce42acd52a4da183fa91e6cb8727b4&redirect_uri=%s&response_type=code", uri, redirect_uri));
+        System.out.printf("%s/authorize?client_id=7dce42acd52a4da183fa91e6cb8727b4&redirect_uri=%s&response_type=code%n", uri, redirectUri);
         System.out.println("waiting for code...");
-        server = new AuthServer(8080);
+        AuthServer server = new AuthServer(8080);
         server.startServer();
         while (authCode == null && timeout > 0) {
             authCode = server.getAuthCode();
@@ -80,36 +58,61 @@ public class Advisor {
         }
         server.stopServer();
         if (authCode != null) {
-            String response = getAccessToken(uri, authCode);
+            String response = client.getAccessToken(uri, authCode, redirectUri);
             if (response != null && response.contains("access_token")) {
-                System.out.printf("response:%n%s%n", response);
-                System.out.println("---SUCCESS---");
+                System.out.println("Success!");
                 access = true;
             }
         }
     }
 
-    public String getAccessToken(String uri, String authCode) {
-        System.out.println("making http request for access_token...");
-        try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .header("Authorization", "Basic "
-                            + Base64.getEncoder()
-                            .encodeToString("7dce42acd52a4da183fa91e6cb8727b4:58171254e1934c11b0057bb503cf9a4d".getBytes()))
-                    .uri(URI.create(String.format("%s/api/token", uri)))
-                    .POST(HttpRequest.BodyPublishers.ofString(
-                            String.format("%s" +
-                                            "&grant_type=authorization_code" +
-                                            "&redirect_uri=%s"
-                                    , authCode, redirect_uri)))
-                    .build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            return response.body();
-        } catch (InterruptedException | IOException e) {
-            e.printStackTrace();
+    public void startAdvisor(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        Advisor advisor = new Advisor();
+        String choice;
+        String category = "";
+
+        int index = Arrays.asList(args).indexOf("-access");
+        String uri = index == -1 ? "https://accounts.spotify.com" : args[index + 1];
+        index = Arrays.asList(args).indexOf("-resource");
+        String apiPath = index == -1 ? "https://api.spotify.com" : args[index + 1];
+
+        //Main loop
+        while (true) {
+            choice = scanner.nextLine();
+            if (choice.contains("playlists")) {
+                category = choice.substring(choice.indexOf(" ") + 1);
+                choice = choice.substring(0, choice.indexOf(" "));
+            }
+
+            switch (choice) {
+                case "new":
+                    //Print new releases
+                    advisor.printNew(apiPath);
+                    break;
+                case "featured":
+                    //Print featured music
+                    advisor.printFeatured(apiPath);
+                    break;
+                case "categories":
+                    //Print categories
+                    advisor.printCategories(apiPath);
+                    break;
+                case "playlists":
+                    //Print music by category
+                    advisor.printPlaylists(apiPath, category);
+                    break;
+                case "auth":
+                    //Authenticate by spotify
+                    advisor.printAuth(uri);
+                    break;
+                case "exit":
+                    //Exit program
+                    advisor.printExit();
+                default:
+                    System.out.println("Unknown command.");
+                    break;
+            }
         }
-        return "";
     }
 }

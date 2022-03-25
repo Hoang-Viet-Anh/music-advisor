@@ -1,8 +1,9 @@
 # Music Advisor
 JetBrains Academy. Project: Music Advisor.</br></br>
-Third stage. In this stage implemented simple functionality to read</br>
+Fourth Stage. In this stage implemented simple functionality to read</br>
 user input and provide information at the user's request.</br>
-Added authentication user by spotify(getting access token).</br></br>
+(3 stage) Added authentication user by spotify(getting access token).</br>
+(4 stage) Implemented all functions of application.</br></br>
 >1. featured — a list of Spotify-featured playlists with their links</br>
 > fetched from API;</br>
 >2. new — a list of new albums with artists and links on Spotify;</br>

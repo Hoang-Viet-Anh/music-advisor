@@ -52,7 +52,6 @@ public class AuthServer {
 //                            authCode = authCode.substring(0, authCode.indexOf('&'));
 //                        }
                         System.out.println("code received");
-                        System.out.println(authCode);
                     }
                 }
             });
