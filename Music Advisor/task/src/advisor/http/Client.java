@@ -32,7 +32,7 @@ public class Client {
     private View view = View.getInstance();
 
     private Client() {
-        httpClient = HttpClient.newHttpClient();
+        httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
     }
 
     public static Client getInstance() {

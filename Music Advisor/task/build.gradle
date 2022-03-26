@@ -2,15 +2,7 @@ apply plugin: 'java'
 apply plugin: 'application'
 
 group 'advisor'
-version '1.0-SNAPSHOT'
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'com.google.code.gson:gson:+'
-}
+version '1.0'
 
 jar {
     	manifest {
@@ -37,3 +29,12 @@ jar {
     	}
     	with jar
     }
+    
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.google.code.gson:gson:+'
+}
+
