@@ -74,6 +74,16 @@ public class Advisor {
         view.setLimit(pages);
 
         //Main loop
+        System.out.println("Command list:\n" +
+                ">1. featured — a list of Spotify-featured playlists with their links\n" +
+                ">fetched from API;\n" +
+                ">2. new — a list of new albums with artists and links on Spotify;\n" +
+                ">3. categories — a list of all available categories on Spotify \n" +
+                "(just their names);\n" +
+                ">4. playlists C_NAME — where C_NAME is the name of category. \n" +
+                "The list contains playlists of this category and their links on Spotify;\n" +
+                ">5. auth — authorization by spotify.\n" +
+                ">6. exit — shuts down the application.");
         while (true) {
 
             choice = scanner.nextLine();
