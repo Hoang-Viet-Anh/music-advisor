@@ -1,29 +1,55 @@
-package advisor;
+package advisor.http;
 
+import advisor.*;
+import advisor.types.Category;
+import advisor.types.Featured;
+import advisor.types.NewRelease;
+import advisor.types.Playlists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Client {
 
+    private static final Client INSTANCE = new Client();
     private HttpClient httpClient;
     private HttpRequest httpRequest;
     private HttpResponse<String> httpResponse;
     private String accessToken;
-    private Map<String, String> categoryList;
+    private LinkedList<Category> categoryList = new LinkedList<>();
+    private LinkedList<NewRelease> newRelease = new LinkedList<>();
+    private LinkedList<Featured> featured = new LinkedList<>();
+    private LinkedList<Playlists> playlists = new LinkedList<>();
+    private View view = View.getInstance();
 
-    public Client() {
+    private Client() {
         httpClient = HttpClient.newHttpClient();
+    }
+
+    public static Client getInstance() {
+        return INSTANCE;
+    }
+
+    public LinkedList<Category> getCategoryList() {
+        return categoryList;
+    }
+    public LinkedList<NewRelease> getNewReleaseList() {
+        return newRelease;
+    }
+    public LinkedList<Featured> getFeaturedList() {
+        return featured;
+    }
+    public LinkedList<Playlists> getPlaylists() {
+        return playlists;
     }
 
     public HttpClient getHttpClient() {
@@ -70,8 +96,36 @@ public class Client {
         }
         return "";
     }
+    public boolean getAuthCode(String uri, String redirectUri) {
+        int timeout = 30;
+        String authCode = null;
+        System.out.println("use this link to request the access code:");
+        System.out.printf("%s/authorize?client_id=7dce42acd52a4da183fa91e6cb8727b4&redirect_uri=%s&response_type=code%n", uri, redirectUri);
+        System.out.println("waiting for code...");
+        AuthServer server = new AuthServer(8080);
+        server.startServer();
+        while (authCode == null && timeout > 0) {
+            authCode = server.getAuthCode();
+            timeout--;
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        server.stopServer();
+        if (authCode != null) {
+            String response = getAccessToken(uri, authCode, redirectUri);
+            if (response != null && response.contains("access_token")) {
+                System.out.println("Success!");
+                return true;
+            }
+        }
+        return false;
+    }
 
     public void getNewReleases(String apiPath) {
+        newRelease.clear();
         apiPath = apiPath.concat("/v1/browse/new-releases");
         String albumName = "";
         List<String> list = new ArrayList<>();
@@ -95,15 +149,12 @@ public class Client {
             }
             albumName = item.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
             albumUrl = item.getAsJsonObject().getAsJsonObject("external_urls").getAsJsonPrimitive("spotify").getAsString();
-            System.out.println(albumName);
-            System.out.println(list);
-            System.out.println(albumUrl);
-            System.out.println();
+            newRelease.add(new NewRelease(albumName, List.copyOf(list), albumUrl));
             list.clear();
         }
-
     }
     public void getFeatured(String apiPath) {
+        featured.clear();
         apiPath = apiPath.concat("/v1/browse/featured-playlists");
         String playlistName = "";
         String playlistUrl = "";
@@ -119,17 +170,15 @@ public class Client {
             playlistName = item.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
             playlistUrl = item.getAsJsonObject().getAsJsonObject("external_urls")
                     .getAsJsonPrimitive("spotify").getAsString();
-            System.out.println(playlistName);
-            System.out.println(playlistUrl);
-            System.out.println();
+            featured.add(new Featured(playlistName, playlistUrl));
         }
     }
     public void getCategories(String apiPath) {
+        categoryList.clear();
         apiPath = apiPath.concat("/v1/browse/categories");
         String categoryName = "";
         String categoryId = "";
         String response = "";
-        categoryList = new LinkedHashMap<>();
 
         response = makeRequest(apiPath);
 
@@ -140,19 +189,24 @@ public class Client {
                 categories.getAsJsonArray("items")) {
             categoryName = category.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
             categoryId = category.getAsJsonObject().getAsJsonPrimitive("id").getAsString();
-            categoryList.put(categoryName, categoryId);
-            System.out.println(categoryName);
+            categoryList.add(new Category(categoryName, categoryId));
         }
     }
     public void getPlaylists(String apiPath, String category) {
         fillCategoryList(apiPath);
+        playlists.clear();
         String response = "";
         String message = "";
+        boolean validCategory = categoryList.stream()
+                .anyMatch(category1 -> category1.getName().equalsIgnoreCase(category));
 
-        if (categoryList.isEmpty() && !categoryList.containsKey(category)) {
+        if (categoryList.isEmpty() || !validCategory) {
             System.out.println("Unknown category name.");
-        } else if (categoryList.containsKey(category)){
-            apiPath = apiPath.concat(String.format("/v1/browse/categories/%s/playlists", categoryList.get(category)));
+        } else {
+            Category categoryObject = categoryList.stream()
+                    .filter(category1 -> category1.getName().equalsIgnoreCase(category))
+                    .collect(Collectors.toList()).get(0);
+            apiPath = apiPath.concat(String.format("/v1/browse/categories/%s/playlists", categoryObject.getId()));
             String playlistName = "";
             String playlistUrl = "";
 
@@ -166,48 +220,36 @@ public class Client {
             } else {
 
                 JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
-                JsonObject playlists = jsonObject.getAsJsonObject("playlists");
+                JsonObject jsonPlaylists = jsonObject.getAsJsonObject("playlists");
 
                 for (JsonElement item :
-                        playlists.getAsJsonArray("items")) {
+                        jsonPlaylists.getAsJsonArray("items")) {
                     playlistName = item.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
                     playlistUrl = item.getAsJsonObject().getAsJsonObject("external_urls")
                             .getAsJsonPrimitive("spotify").getAsString();
-                    System.out.println(playlistName);
-                    System.out.println(playlistUrl);
-                    System.out.println();
+                    playlists.add(new Playlists(playlistName, playlistUrl));
                 }
-            }
-        } else {
-            apiPath = apiPath.concat(String.format("/v1/browse/categories/%s/playlists", category));
-
-            response = makeRequest(apiPath);
-
-            if (response.contains("\"error\"")) {
-                JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
-                message = jsonObject.getAsJsonObject("error")
-                        .getAsJsonPrimitive("message").getAsString();
-                System.out.println(message);
             }
         }
     }
     public void fillCategoryList(String apiPath) {
-        apiPath = apiPath.concat("/v1/browse/categories");
-        String categoryName = "";
-        String categoryId = "";
-        String response = "";
-        categoryList = new LinkedHashMap<>();
+        if (categoryList.isEmpty()) {
+            apiPath = apiPath.concat("/v1/browse/categories");
+            String categoryName = "";
+            String categoryId = "";
+            String response = "";
 
-        response = makeRequest(apiPath);
+            response = makeRequest(apiPath);
 
-        JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
-        JsonObject categories = jsonObject.getAsJsonObject("categories");
+            JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
+            JsonObject categories = jsonObject.getAsJsonObject("categories");
 
-        for (JsonElement category :
-                categories.getAsJsonArray("items")) {
-            categoryName = category.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
-            categoryId = category.getAsJsonObject().getAsJsonPrimitive("id").getAsString();
-            categoryList.put(categoryName, categoryId);
+            for (JsonElement category :
+                    categories.getAsJsonArray("items")) {
+                categoryName = category.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
+                categoryId = category.getAsJsonObject().getAsJsonPrimitive("id").getAsString();
+                categoryList.add(new Category(categoryName, categoryId));
+            }
         }
     }
 

@@ -1058,6 +1058,465 @@ files:
         }
     }
   learner_created: false
+- name: src/advisor/Advisor.java
+  visible: true
+  text: |
+    package advisor;
+
+    import java.util.*;
+
+    public class Advisor {
+
+        private boolean access = false;
+        private final String redirectUri = "http://localhost:8080";
+        private Client client = new Client();
+
+        public void printNew(String apiPath) {
+            if (access) {
+                client.getNewReleases(apiPath);
+            } else {
+                System.out.println("Please, provide access for application.");
+            }
+        }
+        public void printFeatured(String apiPath) {
+            if (access) {
+                client.getFeatured(apiPath);
+            } else {
+                System.out.println("Please, provide access for application.");
+            }
+        }
+        public void printCategories(String apiPath) {
+            if (access) {
+                client.getCategories(apiPath);
+            } else {
+                System.out.println("Please, provide access for application.");
+            }
+        }
+        public void printPlaylists(String apiPath, String category) {
+            if (access) {
+                client.getPlaylists(apiPath, category);
+            } else {
+                System.out.println("Please, provide access for application.");
+            }
+        }
+        public void printExit() {
+            System.exit(0);
+        }
+        public void printAuth(String uri) {
+            int timeout = 30;
+            String authCode = null;
+            System.out.println("use this link to request the access code:");
+            System.out.printf("%s/authorize?client_id=7dce42acd52a4da183fa91e6cb8727b4&redirect_uri=%s&response_type=code%n", uri, redirectUri);
+            System.out.println("waiting for code...");
+            AuthServer server = new AuthServer(8080);
+            server.startServer();
+            while (authCode == null && timeout > 0) {
+                authCode = server.getAuthCode();
+                timeout--;
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            server.stopServer();
+            if (authCode != null) {
+                String response = client.getAccessToken(uri, authCode, redirectUri);
+                if (response != null && response.contains("access_token")) {
+                    System.out.println("Success!");
+                    access = true;
+                }
+            }
+        }
+
+        public void startAdvisor(String[] args) {
+            Scanner scanner = new Scanner(System.in);
+            Advisor advisor = new Advisor();
+            String choice;
+            String category = "";
+
+            int index = Arrays.asList(args).indexOf("-access");
+            String uri = index == -1 ? "https://accounts.spotify.com" : args[index + 1];
+            index = Arrays.asList(args).indexOf("-resource");
+            String apiPath = index == -1 ? "https://api.spotify.com" : args[index + 1];
+
+            //Main loop
+            while (true) {
+                choice = scanner.nextLine();
+                if (choice.contains("playlists")) {
+                    category = choice.substring(choice.indexOf(" ") + 1);
+                    choice = choice.substring(0, choice.indexOf(" "));
+                }
+
+                switch (choice) {
+                    case "new":
+                        //Print new releases
+                        advisor.printNew(apiPath);
+                        break;
+                    case "featured":
+                        //Print featured music
+                        advisor.printFeatured(apiPath);
+                        break;
+                    case "categories":
+                        //Print categories
+                        advisor.printCategories(apiPath);
+                        break;
+                    case "playlists":
+                        //Print music by category
+                        advisor.printPlaylists(apiPath, category);
+                        break;
+                    case "auth":
+                        //Authenticate by spotify
+                        advisor.printAuth(uri);
+                        break;
+                    case "exit":
+                        //Exit program
+                        advisor.printExit();
+                    default:
+                        System.out.println("Unknown command.");
+                        break;
+                }
+            }
+        }
+    }
+  learner_created: true
+- name: src/advisor/View.java
+  visible: true
+  learner_created: true
+- name: src/advisor/http/AuthServer.java
+  visible: true
+  text: |
+    package advisor;
+
+    import com.sun.net.httpserver.HttpExchange;
+    import com.sun.net.httpserver.HttpHandler;
+    import com.sun.net.httpserver.HttpServer;
+
+    import java.io.IOException;
+    import java.net.InetSocketAddress;
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public class AuthServer {
+        private HttpServer server;
+        private String authCode;
+
+        public String getAuthCode() {
+            return authCode;
+        }
+
+        public void setAuthCode(String authCode) {
+            this.authCode = authCode;
+        }
+
+        public AuthServer(int port) {
+            try {
+                this.server = HttpServer.create();
+                this.server.bind(new InetSocketAddress(port), 0);
+                server.createContext("/", new HttpHandler() {
+                    @Override
+                    public void handle(HttpExchange httpExchange) throws IOException {
+                        String query = "post".equalsIgnoreCase(httpExchange.getRequestMethod()) ?
+                                new String(httpExchange.getRequestBody().readAllBytes()) : httpExchange.getRequestURI().getQuery();
+                        String answer;
+                        if (query == null || !query.contains("code=")) {
+                            answer = "Authorization code not found. Try again.";
+                            httpExchange.sendResponseHeaders(200, answer.length());
+                            httpExchange.getResponseBody().write(answer.getBytes());
+                            httpExchange.getResponseBody().close();
+                        }
+
+                        if (query != null && query.contains("code=")) {
+                            authCode = getCode(query);
+                            answer = "Got the code. Return back to your program.";
+                            httpExchange.sendResponseHeaders(200, answer.length());
+                            httpExchange.getResponseBody().write(answer.getBytes());
+                            httpExchange.getResponseBody().close();
+
+    //                        if (authCode.indexOf("code=") != 0) {
+    //                            authCode = authCode.substring(authCode.indexOf("code="));
+    //                        }
+    //                        if (authCode.indexOf('&') != -1) {
+    //                            authCode = authCode.substring(0, authCode.indexOf('&'));
+    //                        }
+                            System.out.println("code received");
+                        }
+                    }
+                });
+            } catch (IOException exc) {
+                exc.printStackTrace();
+            }
+        }
+
+        public void startServer() {
+            this.server.start();
+        }
+        public void stopServer() {
+            this.server.stop(1);
+        }
+
+        public String getCode(String query) {
+            Map<String, String> parameters = new HashMap<>();
+            for (String values :
+                    query.split("&")) {
+                String[] keyVal = values.split("=");
+                if (!keyVal[0].isEmpty()) {
+                    parameters.put(keyVal[0], keyVal[1]);
+                }
+            }
+            return "code=" + parameters.getOrDefault("code", "");
+        }
+    }
+  learner_created: true
+- name: src/advisor/http/Client.java
+  visible: true
+  text: |-
+    package advisor;
+
+    import com.google.gson.JsonArray;
+    import com.google.gson.JsonElement;
+    import com.google.gson.JsonObject;
+    import com.google.gson.JsonParser;
+
+    import java.io.IOException;
+    import java.net.MalformedURLException;
+    import java.net.URI;
+    import java.net.URL;
+    import java.net.http.HttpClient;
+    import java.net.http.HttpRequest;
+    import java.net.http.HttpResponse;
+    import java.util.*;
+
+    public class Client {
+
+        private HttpClient httpClient;
+        private HttpRequest httpRequest;
+        private HttpResponse<String> httpResponse;
+        private String accessToken;
+        private Map<String, String> categoryList;
+
+        public Client() {
+            httpClient = HttpClient.newHttpClient();
+        }
+
+        public HttpClient getHttpClient() {
+            return httpClient;
+        }
+        public void setHttpClient(HttpClient httpClient) {
+            this.httpClient = httpClient;
+        }
+        public HttpRequest getHttpRequest() {
+            return httpRequest;
+        }
+        public void setHttpRequest(HttpRequest httpRequest) {
+            this.httpRequest = httpRequest;
+        }
+        public HttpResponse<String> getHttpResponse() {
+            return httpResponse;
+        }
+        public void setHttpResponse(HttpResponse<String> httpResponse) {
+            this.httpResponse = httpResponse;
+        }
+
+        public String getAccessToken(String uri, String authCode, String redirectUri) {
+            System.out.println("making http request for access_token...");
+            try {
+                httpRequest = HttpRequest.newBuilder()
+                        .header("Content-Type", "application/x-www-form-urlencoded")
+                        .header("Authorization", "Basic "
+                                + Base64.getEncoder()
+                                .encodeToString("7dce42acd52a4da183fa91e6cb8727b4:58171254e1934c11b0057bb503cf9a4d".getBytes()))
+                        .uri(URI.create(String.format("%s/api/token", uri)))
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                String.format("%s" +
+                                                "&grant_type=authorization_code" +
+                                                "&redirect_uri=%s"
+                                        , authCode, redirectUri)))
+                        .build();
+                httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+                String responseText = httpResponse.body();
+                JsonObject jsonObject = JsonParser.parseString(responseText).getAsJsonObject();
+                accessToken = jsonObject.get("access_token").getAsString();
+                return httpResponse.body();
+            } catch (InterruptedException | IOException e) {
+                e.printStackTrace();
+            }
+            return "";
+        }
+
+        public void getNewReleases(String apiPath) {
+            apiPath = apiPath.concat("/v1/browse/new-releases");
+            String albumName = "";
+            List<String> list = new ArrayList<>();
+            String albumUrl = "";
+            String response = "";
+            String artistName;
+
+            response = makeRequest(apiPath);
+
+            JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
+            JsonObject albumsList = jsonObject.getAsJsonObject("albums");
+
+            JsonArray items = albumsList.getAsJsonArray("items");
+            for (JsonElement item :
+                    items) {
+                JsonObject album = item.getAsJsonObject();
+                for (JsonElement artist:
+                     album.getAsJsonArray("artists")) {
+                    artistName = artist.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
+                    list.add(artistName);
+                }
+                albumName = item.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
+                albumUrl = item.getAsJsonObject().getAsJsonObject("external_urls").getAsJsonPrimitive("spotify").getAsString();
+                System.out.println(albumName);
+                System.out.println(list);
+                System.out.println(albumUrl);
+                System.out.println();
+                list.clear();
+            }
+
+        }
+        public void getFeatured(String apiPath) {
+            apiPath = apiPath.concat("/v1/browse/featured-playlists");
+            String playlistName = "";
+            String playlistUrl = "";
+            String response = "";
+
+            response = makeRequest(apiPath);
+
+            JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
+            JsonObject playlists = jsonObject.getAsJsonObject("playlists");
+
+            for (JsonElement item :
+                    playlists.getAsJsonArray("items")) {
+                playlistName = item.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
+                playlistUrl = item.getAsJsonObject().getAsJsonObject("external_urls")
+                        .getAsJsonPrimitive("spotify").getAsString();
+                System.out.println(playlistName);
+                System.out.println(playlistUrl);
+                System.out.println();
+            }
+        }
+        public void getCategories(String apiPath) {
+            apiPath = apiPath.concat("/v1/browse/categories");
+            String categoryName = "";
+            String categoryId = "";
+            String response = "";
+            categoryList = new LinkedHashMap<>();
+
+            response = makeRequest(apiPath);
+
+            JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
+            JsonObject categories = jsonObject.getAsJsonObject("categories");
+
+            for (JsonElement category :
+                    categories.getAsJsonArray("items")) {
+                categoryName = category.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
+                categoryId = category.getAsJsonObject().getAsJsonPrimitive("id").getAsString();
+                categoryList.put(categoryName, categoryId);
+                System.out.println(categoryName);
+            }
+        }
+        public void getPlaylists(String apiPath, String category) {
+            fillCategoryList(apiPath);
+            String response = "";
+            String message = "";
+
+            if (categoryList.isEmpty() && !categoryList.containsKey(category)) {
+                System.out.println("Unknown category name.");
+            } else if (categoryList.containsKey(category)){
+                apiPath = apiPath.concat(String.format("/v1/browse/categories/%s/playlists", categoryList.get(category)));
+                String playlistName = "";
+                String playlistUrl = "";
+
+                response = makeRequest(apiPath);
+
+                if (response.contains("\"error\"")) {
+                    JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
+                    message = jsonObject.getAsJsonObject("error")
+                            .getAsJsonPrimitive("message").getAsString();
+                    System.out.println(message);
+                } else {
+
+                    JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
+                    JsonObject playlists = jsonObject.getAsJsonObject("playlists");
+
+                    for (JsonElement item :
+                            playlists.getAsJsonArray("items")) {
+                        playlistName = item.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
+                        playlistUrl = item.getAsJsonObject().getAsJsonObject("external_urls")
+                                .getAsJsonPrimitive("spotify").getAsString();
+                        System.out.println(playlistName);
+                        System.out.println(playlistUrl);
+                        System.out.println();
+                    }
+                }
+            } else {
+                apiPath = apiPath.concat(String.format("/v1/browse/categories/%s/playlists", category));
+
+                response = makeRequest(apiPath);
+
+                if (response.contains("\"error\"")) {
+                    JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
+                    message = jsonObject.getAsJsonObject("error")
+                            .getAsJsonPrimitive("message").getAsString();
+                    System.out.println(message);
+                }
+            }
+        }
+        public void fillCategoryList(String apiPath) {
+            apiPath = apiPath.concat("/v1/browse/categories");
+            String categoryName = "";
+            String categoryId = "";
+            String response = "";
+            categoryList = new LinkedHashMap<>();
+
+            response = makeRequest(apiPath);
+
+            JsonObject jsonObject = JsonParser.parseString(response).getAsJsonObject();
+            JsonObject categories = jsonObject.getAsJsonObject("categories");
+
+            for (JsonElement category :
+                    categories.getAsJsonArray("items")) {
+                categoryName = category.getAsJsonObject().getAsJsonPrimitive("name").getAsString();
+                categoryId = category.getAsJsonObject().getAsJsonPrimitive("id").getAsString();
+                categoryList.put(categoryName, categoryId);
+            }
+        }
+
+        public String makeRequest(String apiPath) {
+            String response = "";
+            try {
+                httpRequest = HttpRequest.newBuilder()
+                        .header("Authorization", "Bearer " + accessToken)
+                        .uri(URI.create(apiPath))
+                        .GET()
+                        .build();
+                httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+                response = httpResponse.body();
+            } catch (IOException | InterruptedException exc) {
+                exc.printStackTrace();
+            }
+            return response;
+        }
+    }
+  learner_created: true
+- name: src/advisor/types/Category.java
+  visible: true
+  learner_created: true
+- name: src/advisor/types/Featured.java
+  visible: true
+  learner_created: true
+- name: src/advisor/types/NewRelease.java
+  visible: true
+  learner_created: true
+- name: src/advisor/types/Playlists.java
+  visible: true
+  learner_created: true
 feedback_link: https://hyperskill.org/learn/step/5481#comment
-status: Unchecked
+status: Solved
+feedback:
+  message: Well done! You've finished the project. Select a new project on <a href="https://hyperskill.org/projects">JetBrains
+    Academy</a> to continue learning.
+  time: Sat, 26 Mar 2022 20:04:04 UTC
 record: -1

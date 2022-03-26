@@ -3,7 +3,7 @@ hyperskill_project:
   ide_files: https://stepik.org/media/attachments/lesson/210107/additional_files.json
   is_template_based: false
   use_ide: true
-update_date: Fri, 25 Mar 2022 11:21:12 UTC
+update_date: Sat, 26 Mar 2022 17:27:05 UTC
 stages:
 - id: 335
   step: 5477
@@ -19,7 +19,7 @@ stages:
   is_completed: true
 - id: 339
   step: 5481
-  is_completed: false
+  is_completed: true
 topics:
   0:
   - title: Write, compile, and run
@@ -177,6 +177,8 @@ topics:
     theory_id: 7427
   - title: Authentication and Authorization
     theory_id: 14219
+  - title: Introduction to API
+    theory_id: 17007
   - title: Decorator
     theory_id: 5216
   - title: Static members
